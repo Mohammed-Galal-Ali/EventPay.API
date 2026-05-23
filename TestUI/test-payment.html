@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EventPay — إتمام الدفع</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #0a0a0f;
+            --surface: #111118;
+            --card: #16161f;
+            --border: #2a2a3a;
+            --accent: #6c63ff;
+            --accent2: #ff6584;
+            --text: #f0f0ff;
+            --muted: #6b6b8a;
+            --success: #00e5a0;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Animated background */
+        .bg-orbs {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.15;
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .orb-1 {
+            width: 400px; height: 400px;
+            background: var(--accent);
+            top: -100px; right: -100px;
+            animation-delay: 0s;
+        }
+
+        .orb-2 {
+            width: 300px; height: 300px;
+            background: var(--accent2);
+            bottom: -80px; left: -80px;
+            animation-delay: -3s;
+        }
+
+        .orb-3 {
+            width: 200px; height: 200px;
+            background: #00e5a0;
+            top: 50%; left: 30%;
+            animation-delay: -5s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-30px) scale(1.05); }
+        }
+
+        /* Grid pattern */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(108,99,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(108,99,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 520px;
+            padding: 20px;
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        @keyframes slideUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .logo-icon {
+            width: 42px; height: 42px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .logo-text {
+            font-size: 24px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-sub {
+            color: var(--muted);
+            font-size: 14px;
+            font-weight: 300;
+        }
+
+        /* Card */
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 32px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0.5;
+        }
+
+        /* Event info */
+        .event-badge {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(108,99,255,0.08);
+            border: 1px solid rgba(108,99,255,0.2);
+            border-radius: 14px;
+            padding: 14px 16px;
+            margin-bottom: 28px;
+        }
+
+        .event-icon {
+            width: 40px; height: 40px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .event-info { flex: 1; }
+
+        .event-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 2px;
+        }
+
+        .event-price {
+            font-size: 13px;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* Section title */
+        .section-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--muted);
+            margin-bottom: 10px;
+        }
+
+        /* Input */
+        .input-wrapper {
+            margin-bottom: 20px;
+        }
+
+        .input-field {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            color: var(--text);
+            font-family: 'Cairo', sans-serif;
+            font-size: 13px;
+            outline: none;
+            transition: all 0.2s;
+            direction: ltr;
+        }
+
+        .input-field::placeholder { color: var(--muted); }
+
+        .input-field:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(108,99,255,0.1);
+        }
+
+        /* Stripe card element */
+        .card-element-wrapper {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 28px;
+            transition: all 0.2s;
+            direction: ltr;
+        }
+
+        .card-element-wrapper:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(108,99,255,0.1);
+        }
+
+        /* Test card hint */
+        .test-hint {
+            background: rgba(0,229,160,0.06);
+            border: 1px solid rgba(0,229,160,0.15);
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .test-hint-icon { font-size: 16px; margin-top: 1px; }
+
+        .test-hint-text {
+            font-size: 12px;
+            color: var(--success);
+            line-height: 1.8;
+            direction: ltr;
+        }
+
+        .test-hint-text strong {
+            display: block;
+            font-size: 11px;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        /* Button */
+        .pay-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            border: none;
+            border-radius: 14px;
+            color: white;
+            font-family: 'Cairo', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pay-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, #8b5cf6, var(--accent));
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .pay-btn:hover::before { opacity: 1; }
+        .pay-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(108,99,255,0.4); }
+        .pay-btn:active { transform: translateY(0); }
+        .pay-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .pay-btn span { position: relative; z-index: 1; }
+
+        /* Loading */
+        .pay-btn.loading span::after {
+            content: '';
+            display: inline-block;
+            width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Result */
+        .result {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+        .result.success {
+            background: rgba(0,229,160,0.1);
+            border: 1px solid rgba(0,229,160,0.3);
+            color: var(--success);
+            display: block;
+        }
+
+        .result.error {
+            background: rgba(255,101,132,0.1);
+            border: 1px solid rgba(255,101,132,0.3);
+            color: var(--accent2);
+            display: block;
+        }
+
+        /* Divider */
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 24px 0;
+        }
+
+        /* Secure badge */
+        .secure-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 16px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+</div>
+
+<div class="container">
+    <div class="header">
+        <div class="logo">
+            <div class="logo-icon">🎟️</div>
+            <div class="logo-text">EventPay</div>
+        </div>
+        <div class="header-sub">بوابة الدفع الآمنة</div>
+    </div>
+
+    <div class="card">
+        <div class="event-badge">
+            <div class="event-icon">🎉</div>
+            <div class="event-info">
+                <div class="event-name" id="eventTitle">اسم الفعالية</div>
+                <div class="event-price" id="eventPrice">—</div>
+            </div>
+        </div>
+
+        <div class="input-wrapper">
+            <div class="section-title">Client Secret</div>
+            <input 
+                id="clientSecret" 
+                class="input-field"
+                placeholder="pi_xxxxx_secret_xxxxx" 
+                oninput="parseClientSecret(this.value)"
+            />
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section-title">بيانات الكارت</div>
+
+        <div class="test-hint">
+            <div class="test-hint-icon">💳</div>
+            <div class="test-hint-text">
+                <strong>Test Card</strong>
+                4242 4242 4242 4242 &nbsp;|&nbsp; 12/29 &nbsp;|&nbsp; 123
+            </div>
+        </div>
+
+        <div class="card-element-wrapper">
+            <div id="card-element"></div>
+        </div>
+
+        <button class="pay-btn" onclick="pay()" id="payBtn">
+            <span>💳 &nbsp; ادفع الآن</span>
+        </button>
+
+        <div class="result" id="result"></div>
+
+        <div class="secure-badge">
+            🔒 مدفوعات آمنة بواسطة Stripe
+        </div>
+    </div>
+</div>
+
+<script>
+    const stripe = Stripe('pk_test_51TZURVFBXqlaQzKNRgm9S651oS3gl4jfJGJ3UH0iYU9enZ8CV1EVtRDfk8MugfFyI8acVxwG7SqM6eOFR8PpTNZu00OM2yzzV7');
+    const elements = stripe.elements({
+        appearance: {
+            theme: 'night',
+            variables: {
+                colorPrimary: '#6c63ff',
+                colorBackground: '#111118',
+                colorText: '#f0f0ff',
+                colorDanger: '#ff6584',
+                fontFamily: 'Cairo, sans-serif',
+                borderRadius: '8px',
+            }
+        }
+    });
+
+    const card = elements.create('card');
+    card.mount('#card-element');
+
+    function parseClientSecret(val) {
+        if (val.includes('_secret_')) {
+            document.getElementById('eventTitle').textContent = 'Tech Conference 2026';
+            document.getElementById('eventPrice').textContent = '500 جنيه';
+        }
+    }
+
+    async function pay() {
+        const clientSecret = document.getElementById('clientSecret').value.trim();
+        const btn = document.getElementById('payBtn');
+        const result = document.getElementById('result');
+
+        if (!clientSecret) {
+            showResult('error', '⚠️ حط الـ clientSecret الأول');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.classList.add('loading');
+        btn.querySelector('span').textContent = 'جاري المعالجة...';
+        result.className = 'result';
+
+        const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+            payment_method: { card }
+        });
+
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        btn.querySelector('span').textContent = '💳   ادفع الآن';
+
+        if (error) {
+            showResult('error', '❌ ' + error.message);
+        } else if (paymentIntent.status === 'succeeded') {
+            showResult('success', '✅ تم الدفع بنجاح! جاري تأكيد تذكرتك...');
+        }
+    }
+
+    function showResult(type, msg) {
+        const el = document.getElementById('result');
+        el.className = 'result ' + type;
+        el.textContent = msg;
+    }
+</script>
+
+</body>
+</html>
