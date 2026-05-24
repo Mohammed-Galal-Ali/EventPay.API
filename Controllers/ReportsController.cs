@@ -38,4 +38,11 @@ public class ReportsController : ControllerBase
         var bytes = await _reportService.GenerateTicketsPdfAsync();
         return File(bytes, "application/pdf", "tickets.pdf");
     }
+
+    [HttpGet("analytics")]
+    public async Task<IActionResult> GetAnalytics()
+    {
+        var analytics = await _reportService.GetAnalyticsAsync();
+        return Ok(analytics);
+    }
 }

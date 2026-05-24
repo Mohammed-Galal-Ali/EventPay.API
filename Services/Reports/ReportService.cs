@@ -197,5 +197,48 @@ namespace EventPay.API.Services.Reports
                 totalPages = (int)Math.Ceiling((double)totalCount / pageSize)
             };
         }
+        // ReportService Analytics
+        public async Task<object> GetAnalyticsAsync()
+        {
+            var tickets = await _context.Tickets
+                .Include(t => t.Event)
+                .ToListAsync();
+
+            var last7Days = Enumerable.Range(0, 7)
+                .Select(i => DateTime.UtcNow.Date.AddDays(-i))
+                .Reverse()
+                .Select(date => new
+                {
+                    date = date.ToString("MM/dd"),
+                    sales = tickets
+                        .Where(t => t.Status == TicketStatus.Paid && t.CreatedAt.Date == date)
+                        .Sum(t => t.PricePaid)
+                });
+
+            var statusBreakdown = new[]
+            {
+        new { name = "Paid", value = tickets.Count(t => t.Status == TicketStatus.Paid) },
+        new { name = "Pending", value = tickets.Count(t => t.Status == TicketStatus.Pending) },
+        new { name = "Cancelled", value = tickets.Count(t => t.Status == TicketStatus.Cancelled) },
+    };
+
+            var topEvents = tickets
+                .GroupBy(t => t.Event.Title)
+                .Select(g => new
+                {
+                    name = g.Key.Length > 20 ? g.Key.Substring(0, 20) + "..." : g.Key,
+                    tickets = g.Count(t => t.Status == TicketStatus.Paid),
+                    revenue = g.Where(t => t.Status == TicketStatus.Paid).Sum(t => t.PricePaid)
+                })
+                .OrderByDescending(x => x.tickets)
+                .Take(5);
+
+            return new
+            {
+                salesLast7Days = last7Days,
+                statusBreakdown,
+                topEvents
+            };
+        }
     }
 }

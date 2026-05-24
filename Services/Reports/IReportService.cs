@@ -7,5 +7,6 @@ namespace EventPay.API.Services.Reports
         Task<object> GetTicketsAsync(int page, int pageSize, string? status);
         Task<byte[]> GenerateTicketsExcelAsync();
         Task<byte[]> GenerateTicketsPdfAsync();
+        Task<object> GetAnalyticsAsync();
     }
 }
