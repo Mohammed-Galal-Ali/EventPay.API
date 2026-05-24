@@ -9,6 +9,7 @@ using EventPay.API.Services.Maps;
 using EventPay.API.Services.Messaging;
 using EventPay.API.Services.Payments;
 using EventPay.API.Services.Reports;
+using EventPay.API.Services.Tickets;
 using EventPay.API.Validators;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -48,6 +49,7 @@ namespace EventPay.API
             builder.Services.AddScoped<IValidator<CreatePaymentDto>, CreatePaymentValidator>();
             builder.Services.AddScoped<IValidator<CreateEventDto>, CreateEventValidator>();
             builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<ITicketService, TicketService>();
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowReact", policy =>

@@ -31,6 +31,12 @@ namespace EventPay.API.Controllers
             var code = await _otpService.SendOtpAsync(dto.Recipient, OtpType.Telegram);
             return Ok(new { message = "OTP اتبعت!", code });
         }
+        [HttpPost("send-otp/email")]
+        public async Task<IActionResult> SendOtpEmail([FromBody] SendOtpDto dto)
+        {
+            var code = await _otpService.SendOtpAsync(dto.Recipient, OtpType.Email);
+            return Ok(new { message = "OTP sent to your email" });
+        }
 
         [HttpPost("verify-otp")]
         public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto dto)
