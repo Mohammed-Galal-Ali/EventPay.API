@@ -95,5 +95,14 @@ namespace EventPay.API.Services.EventService
                 MapLink = e.MapLink
             };
         }
+        public async Task<bool> DeleteEventAsync(int id)
+        {
+            var eventItem = await _context.Events.FindAsync(id);
+            if (eventItem == null) return false;
+
+            _context.Events.Remove(eventItem);
+            await _context.SaveChangesAsync();
+            return true;
+        }
     }
 }

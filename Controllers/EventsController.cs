@@ -1,6 +1,7 @@
 ﻿using EventPay.API.DTOs.Events;
 using EventPay.API.Services.IEvent;
 using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -33,7 +34,9 @@ namespace EventPay.API.Controllers
             }
             return Ok(eventItem);
         }
+
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create(CreateEventDto dto)
         {
             var validation = await _validator.ValidateAsync(dto);
@@ -47,6 +50,16 @@ namespace EventPay.API.Controllers
 
             var createdEvent = await _eventService.CreateEventAsync(dto);
             return CreatedAtAction(nameof(GetById), new { id = createdEvent.Id }, createdEvent);
+        }
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var result = await _eventService.DeleteEventAsync(id);
+            if (!result)
+                return NotFound(new { message = "Event not found" });
+
+            return Ok(new { message = "Event deleted successfully" });
         }
     }
 }

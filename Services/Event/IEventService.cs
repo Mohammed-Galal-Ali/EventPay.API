@@ -7,5 +7,7 @@ namespace EventPay.API.Services.IEvent
         Task<List<EventResponseDto>> GetAllEventsAsync();
         Task<EventResponseDto?> GetEventByIdAsync(int id);
         Task<EventResponseDto> CreateEventAsync(CreateEventDto dto);
+
+        Task<bool> DeleteEventAsync(int id);
     }
 }
